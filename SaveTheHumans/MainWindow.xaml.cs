@@ -23,81 +23,92 @@ namespace SaveTheHumans
     /// </summary>
     public partial class MainWindow : Window
     {
-        Random random = new Random();
-        DispatcherTimer enemyTimer = new DispatcherTimer();
-        DispatcherTimer targetTimer = new DispatcherTimer();
-        bool humanCaptured = false;
+        Random random = new Random();                           //generator losowych liczb
+        DispatcherTimer enemyTimer = new DispatcherTimer();     // obiekt zarządzający czasem wrogów
+        DispatcherTimer targetTimer = new DispatcherTimer();    // obiekt zarządzający czasem gry
+        bool humanCaptured = false;                             // zmienna boolowska określająca złapanie człowikea przez myszą
 
         public MainWindow()
         {
             InitializeComponent();
 
             enemyTimer.Tick += enemyTimer_Tick;
-            enemyTimer.Interval = TimeSpan.FromSeconds(2);
+            enemyTimer.Interval = TimeSpan.FromSeconds(2);      // timer wrogów ustawiony na 2 sek czyli dodajemy ich co 2 sek
 
             targetTimer.Tick += targetTimer_Tick;
-            targetTimer.Interval = TimeSpan.FromSeconds(.1);
+            targetTimer.Interval = TimeSpan.FromSeconds(0.1);   // timer gry ustawiony na 10 sek  / timer trwa z wartoscia 1 100 sek
 
 
 
         }
 
-        private void targetTimer_Tick(object sender, EventArgs e)
+        void targetTimer_Tick(object sender, EventArgs e)       // metoda zapełniająca pasek z czasem gry
         {
-            progressBar.Value += 1;
-            if(progressBar.Value >= progressBar.Maximum)
+            progressBar.Value += 1;                             // dodajemy do paska po 1
+            if(progressBar.Value >= progressBar.Maximum)        // jesli pasek się zapełni  wywołujemy koniec gry
             {
                 EndTheGame();
             }
         }
 
-        private void EndTheGame()
+        private void EndTheGame()                               // metoda zakonczenia gry
         {
 
-            if (!playArea.Children.Contains(ganeOverText))
+            if (!playArea.Children.Contains(gameOverText))      // jeśli na ekranie nie widać gameover
             {
-                enemyTimer.Stop();
-                targetTimer.Stop();
-                humanCaptured = false;
-                startButton.Visibility = Visibility.Visible;
-                playArea.Children.Add(ganeOverText);
+                enemyTimer.Stop();                              // zastopuj timer wrogów
+                targetTimer.Stop();                             // zastopuj timer gry
+                humanCaptured = false;                          // zresetowanie zmiennej human caputred na false czyli nie złapany przez mysz
+                startButton.Visibility = Visibility.Visible;    // pokazanie klawisza startu aby można zagrać jeszcze raz   
+                playArea.Children.Add(gameOverText);            // Wyswietlenie napisu game over
             }
 
         }
 
-        private void enemyTimer_Tick(object sender, EventArgs e)
+        private void enemyTimer_Tick(object sender, EventArgs e) // zadeklarowanie metody timera obcego
         {
-            AddEnemy();
+            AddEnemy();                                         // wywołanie metody dodania obcego
         }
 
-        private void startButton_Click(object sender, RoutedEventArgs e)
+        private void startButton_Click(object sender, RoutedEventArgs e)    // metoda dla zdarzenia klikniecia na przycisk start
         {
-            StartGame();
+            StartGame();                                        // wywołanie metody rozpoczęcie gry
         }
 
-        private void StartGame()
+        private void StartGame()                                // deklaracja metody rozpoczęcia gry
         {
 
-            human.IsHitTestVisible = true;
-            humanCaptured = false;
-            progressBar.Value = 0;
-            startButton.Visibility = Visibility.Collapsed;
-            playArea.Children.Clear();
-            playArea.Children.Add(target);
-            playArea.Children.Add(human);
-            enemyTimer.Start();
-            targetTimer.Start();
+            human.IsHitTestVisible = true;                      // pozycjonowanie człowieka na ekranie oznaczone jako mozliwe
+            humanCaptured = false;                              // ustawienie człowieka na niezłapany przez mysz
+            progressBar.Value = 0;                              // wyzerowanie paska czasu gry
+            startButton.Visibility = Visibility.Collapsed;      // wyłącznie widoczności przycisku start
+            playArea.Children.Clear();                          // wyczyszczenie pola gry z wszystkiego
+            playArea.Children.Add(target);                      // wstawienie wyjscia
+            playArea.Children.Add(human);                       // dodanie człowieka
+            enemyTimer.Start();                                 // uruchomienie timera obcych
+            targetTimer.Start();                                // uruchomienie timera gry
 
         }
 
-        private void AddEnemy()
+        private void AddEnemy()                                 // metoda dodania wrogów
         {
-         ContentControl enemy = new ContentControl();
-            enemy.Template = Resources["EnemyTemplate"] as ControlTemplate;
-            AnimateEnemy(enemy, 0, playArea.ActualWidth - 100, "(Canvas.Left)");
-            AnimateEnemy(enemy, random.Next((int)playArea.ActualHeight - 100), random.Next((int)playArea.ActualHeight - 100), "(Canvas.Top)");
-            playArea.Children.Add(enemy);
+         ContentControl enemy = new ContentControl();           // utworzenie nowego obiektu kontrolującego zawartość pola gry
+            enemy.Template = Resources["EnemyTemplate"] as ControlTemplate;             // przypisanie wartości szablonu do obiektu contentcontrol
+            AnimateEnemy(enemy, 0, playArea.ActualWidth - 100, "(Canvas.Left)");        // pozycjonowanie pojawienia się obcego       
+            AnimateEnemy(enemy, random.Next((int)playArea.ActualHeight - 100), 
+                random.Next((int)playArea.ActualHeight - 100), "(Canvas.Top)");
+            playArea.Children.Add(enemy);                                               // dodanie obcego do pola gry 
 
+            enemy.MouseEnter += Enemy_MouseEnter;               // najechanie człowiekiem na wroga powoduje koniec gry 
+
+        }
+
+        private void Enemy_MouseEnter(object sender, MouseEventArgs e)
+        {
+            if (humanCaptured)
+            {
+                EndTheGame();
+            }
         }
 
         private void AnimateEnemy(ContentControl enemy, double from, double to, string propertyToAnimate)
@@ -116,6 +127,59 @@ namespace SaveTheHumans
             storyboard.Begin();
 
 
+        }
+
+        private void human_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (enemyTimer.IsEnabled)
+            {
+                humanCaptured = true;                               // zmienna wskazuje że trzymamy człowieka /złapanie człowieka 
+                human.IsHitTestVisible = false;
+            }
+        }
+
+        private void target_MouseEnter(object sender, MouseEventArgs e)
+        {
+            if(targetTimer.IsEnabled && humanCaptured)
+            {
+                progressBar.Value = 0;
+                Canvas.SetLeft(target, random.Next(100, (int)playArea.ActualWidth - 100));
+                Canvas.SetTop(target, random.Next(100, (int)playArea.ActualHeight - 100));
+                Canvas.SetLeft(human, random.Next(100, (int)playArea.ActualWidth - 100));
+                Canvas.SetTop(human, random.Next(100, (int)playArea.ActualHeight - 100));
+                humanCaptured = false;
+                human.IsHitTestVisible = true;
+            }
+        }
+
+        private void playArea_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (humanCaptured)
+            {
+
+                Point pointerPosition = e.GetPosition(null);
+                Point relativePosition = grid.TransformToVisual(playArea).Transform(pointerPosition);
+                if ((Math.Abs(relativePosition.X - Canvas.GetLeft(human)) > human.ActualWidth * 3) || 
+                    (Math.Abs(relativePosition.Y - Canvas.GetTop(human)) > human.ActualHeight * 3))
+                {
+                    humanCaptured = false;
+                    human.IsHitTestVisible = true;
+                }
+                else
+                {
+                    Canvas.SetLeft(human, relativePosition.X - human.ActualWidth / 2);          //odpowiada za zmianę pozycji postaci w pionie
+                    Canvas.SetTop(human, relativePosition.Y - human.ActualHeight / 2);          //odpowiada za zmianę pozycji postaci w poziomie
+                }
+
+            }
+        }
+
+        private void playArea_MouseLeave(object sender, MouseEventArgs e)
+        {
+            if (humanCaptured)
+            {
+                EndTheGame();
+            }
         }
     }
 }
